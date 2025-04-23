@@ -35,11 +35,11 @@ The repository is organized into clearly separated folders for data, models, eva
    git clone https://github.com/RudraPankaj/multimodal-wiki-captioning.git
    cd image-captioning-project
    ```
-2. Install dependencies:
+2. Install dependencies (not added yet):
     ```
     pip install -r requirements.txt
     ```
-3. Create and activate a conda environment:
+3. Create and activate a conda environment (not added yet):
     ```
     conda env create -f environment.yml
     conda activate captioning-env
