@@ -1,0 +1,155 @@
+import os
+import pandas as pd
+import requests
+from tqdm import tqdm
+import gzip
+import shutil
+
+# Download and Load WIT Dataset (English-only subset)
+dataset_url = "https://storage.googleapis.com/gresearch/wit/wit_v1.train.all-00000-of-00010.tsv.gz"
+dataset_path = "/kaggle/working/wit_dataset.tsv.gz"
+tsv_file_path = '/kaggle/working/wit_dataset.tsv'
+
+# Download dataset
+if not os.path.exists(dataset_path):
+    print("Downloading dataset...")
+    response = requests.get(dataset_url, stream=True)
+    with open(dataset_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+# Extract the dataset
+if not os.path.exists(tsv_file_path):
+    print("Extracting dataset...")
+    with gzip.open(dataset_path, 'rb') as f_in:
+        with open(tsv_file_path, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+# Define file paths
+image_dir = '/kaggle/working/image_data/'
+csv_file_path = '/kaggle/working/text_data.csv'
+log_file_path = '/kaggle/working/failed_downloads.log'
+
+# Ensure the image directory exists
+os.makedirs(image_dir, exist_ok=True)
+
+# Step 1: Load the dataset
+print("Loading dataset...")
+df = pd.read_csv(tsv_file_path, sep='\t')
+
+# Filter rows where language is English
+print("Filtering dataset...")
+df = df[df['language'] == 'en']
+
+# Initialize a list to store image-text mappings
+image_text_mapping = []
+
+# Open the log file to record failed downloads
+with open(log_file_path, 'w') as log_file:
+    log_file.write("Failed Image Downloads:\n")
+
+# Initialize a counter for successfully downloaded images
+downloaded_images_count = 0
+
+# Step 2: Initialize the progress bar
+with tqdm(total=df.shape[0], desc="Downloading images", unit="image") as pbar:
+    # Iterate through the dataset and download images
+    for idx, row in df.iterrows():
+        image_url = row['image_url']
+        if pd.isnull(image_url) or image_url == '':
+            pbar.update(1)  # Update progress bar for skipped rows
+            continue  # Skip rows with empty image URLs
+
+        # Generate a unique filename based on the index
+        image_filename = f"img_{idx}.jpg"
+        image_path = os.path.join(image_dir, image_filename)
+
+        try:
+            # Download the image
+            response = requests.get(image_url, stream=True, timeout=10)  # Added timeout
+            if response.status_code == 200:
+                # Save the image
+                with open(image_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        f.write(chunk)
+                # Concatenate relevant text columns
+                text_data = ' '.join([
+                    str(row['page_title']),
+                    str(row['section_title']),
+                    str(row['hierarchical_section_title']),
+                    str(row['caption_reference_description']),
+                    str(row['caption_attribution_description']),
+                    str(row['caption_alt_text_description']),
+                    str(row['context_page_description']),
+                    str(row['context_section_description'])
+                ])
+                # Append the mapping to the list
+                image_text_mapping.append({'image_filename': image_filename, 'text_data': text_data})
+                downloaded_images_count += 1
+                # Update the progress bar description
+                pbar.set_postfix({"Downloaded": downloaded_images_count})
+            else:
+                # Log failed download
+                with open(log_file_path, 'a') as log_file:
+                    log_file.write(f"Failed to download {image_url} with status code {response.status_code}\n")
+        except Exception as e:
+            # Log the exception
+            with open(log_file_path, 'a') as log_file:
+                log_file.write(f"Error downloading {image_url}: {e}\n")
+
+        # Update the progress bar
+        pbar.update(1)
+
+        # Stop if we've successfully downloaded 5,000 images
+        if downloaded_images_count >= 5000:
+            break
+
+# Step 3: Create a DataFrame from the image-text mapping
+image_text_df = pd.DataFrame(image_text_mapping)
+
+# Step 4: Save the text data to a CSV file
+image_text_df.to_csv(csv_file_path, index=False)
+
+print(f"Images saved to: {image_dir}")
+print(f"Text data saved to: {csv_file_path}")
+print(f"Failed downloads logged in: {log_file_path}")
+
+
+
+
+
+
+
+
+# #==========================#
+# #       Delete Folder 
+# #==========================#
+# import shutil
+# folder_path = '/kaggle/working/image_data'    # folder path here
+# # Delete the folder and all its contents
+# shutil.rmtree(folder_path)
+
+
+
+# #==========================#
+# #       Delete File 
+# #==========================#
+# import os
+# file_path = '/kaggle/working/wit_dataset.tsv.gz'    # file path here
+# # Delete the file
+# os.remove(file_path)
+
+
+
+# #==========================#
+# #     Download Folder/File 
+# #==========================#
+# import shutil
+# folder_path = "/kaggle/working/image_data"    # folder path here
+# shutil.make_archive(folder_path, 'zip', f"{folder_path}")
+# # Now download the zipped folder
+# from IPython.display import FileLink
+# FileLink(f"/kaggle/working/image_data.zip")
+# # Now download the text file
+# file_path = "/kaggle/working/text_data.csv"  # CSV file path here
+# FileLink(file_path)
