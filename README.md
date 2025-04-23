@@ -32,7 +32,7 @@ The repository is organized into clearly separated folders for data, models, eva
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/image-captioning-project.git
+   git clone https://github.com/RudraPankaj/multimodal-wiki-captioning.git
    cd image-captioning-project
    ```
 2. Install dependencies:
